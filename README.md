@@ -1,3 +1,4 @@
+PROJECT LINK : file:///C:/Users/majji/Downloads/sentinelai-dashboard.html
 # 🛡️ FraudShield AI — Bank Fraud Detection System
 
 [![CI/CD](https://github.com/your-repo/fraud-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/your-repo/fraud-detection/actions)
