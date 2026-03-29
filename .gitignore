@@ -1,0 +1,26 @@
+# AI-Based Fraud Detection - Dependencies
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.env
+.venv/
+venv/
+node_modules/
+*.log
+*.pkl
+*.joblib
+.DS_Store
+*.db
+*.sqlite3
+alembic/versions/*.py
+!alembic/versions/__init__.py
+frontend/dist/
+frontend/node_modules/
+ml_service/app/models/saved_models/*.joblib
+ml_service/data/*.csv
+.pytest_cache/
+htmlcov/
+.coverage

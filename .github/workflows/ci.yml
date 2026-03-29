@@ -1,0 +1,103 @@
+name: FraudShield CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Backend Tests ──────────────────────────────
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: fraud_user
+          POSTGRES_PASSWORD: fraud_pass_2024
+          POSTGRES_DB: fraud_detection_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: pip install -r requirements.txt
+
+      - name: Run backend tests
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://fraud_user:fraud_pass_2024@localhost:5432/fraud_detection_db
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: test-secret-key
+          JWT_REFRESH_SECRET_KEY: test-refresh-key
+        run: pytest tests/ -v --tb=short
+
+  # ─── ML Service Tests ───────────────────────────
+  ml-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install ML dependencies
+        working-directory: ./ml_service
+        run: pip install -r requirements.txt
+
+      - name: Run ML tests
+        working-directory: ./ml_service
+        run: python -c "from app.pipeline.train import train_pipeline; train_pipeline()"
+
+  # ─── Frontend Build ─────────────────────────────
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+  # ─── Docker Build ───────────────────────────────
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, ml-tests, frontend-build]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker images
+        run: |
+          docker build -t fraudshield-backend ./backend
+          docker build -t fraudshield-ml ./ml_service
+          docker build -t fraudshield-frontend ./frontend
+      
+      - name: Verify images
+        run: docker images | grep fraudshield
